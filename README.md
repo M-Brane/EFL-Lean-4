@@ -1,0 +1,1 @@
+The files related to Theorem 1 prove that the Erdős–Faber–Lovász (EFL) conjecture is true.  The files related to Theorem 2 provide a proven algorithm for identifying a valid EFL coloring more rapidly, than by trying random colorings.
