@@ -141,69 +141,6 @@ lemma non_free_implies_additional_hyperedge {n : Nat} (G : EFLGraph n)
     exact hj_in
 
 /-!
-## Lemma 1.2 (Manuscript): Exclusion Reason 2 Locality
-
-**Manuscript Statement:** "Vertices that are excluded for selection by Vertex Exclusion
-Reason 2 are only excluded during generation of the single-color hyperedge currently
-under construction."
-
-**Manuscript Proof:** "Suppose not. Then for some vertex, v1, which was excluded for
-selection in a previously constructed single-color hyperedge, hi, for Vertex Exclusion
-Reason 2, the following would be true. Vertex v1 lies in some given hyperedge, g, that
-contains some vertex, v2, that was selected for hi. But if v1 were also excluded from
-inclusion in another single-color hyperedge, hj, because of that same invocation of
-Vertex Exclusion Reason 2, then that would mean v2 is also a member of hj, which
-contradicts the uniqueness requirement of the definition of Single-Color Hyperedge."
-
-**Proof Strategy:** Proof by contradiction showing that if v1 were excluded in both hi
-and hj for the same Exclusion Reason 2 (involving same v2 and g), then v2 would need
-to be in both hi and hj, violating uniqueness.
--/
-
-/-- Lemma 1.2: Exclusion Reason 2 is local to current hyperedge construction.
-
-If vertex v1 is excluded from two different single-color hyperedges hi and hj due to
-the SAME instance of Exclusion Reason 2 (same connecting vertex v2, same given hyperedge g),
-this leads to a contradiction: v2 would need to appear in both hi and hj, violating
-the requirement that each vertex appears in at most one single-color hyperedge.
-
-This proves that Exclusion Reason 2 exclusions are temporary and local to the current
-hyperedge being constructed - they do not persist across different hyperedge constructions.
--/
-lemma exclusion_reason_2_is_local {n : Nat} (_hn : n > 0) (G : EFLGraph n)
-    (v1 v2 : G.vertices) (g hi_num hj_num : Fin n)
-    (hi hj : Fin n → G.vertices) -- Two different single-color hyperedges
-    (h_different_hyperedges : hi_num ≠ hj_num)
-    (_h_hi_valid : ∀ k, hi k ∈ G.hyperedges k) -- hi is valid single-color hyperedge
-    (_h_hj_valid : ∀ k, hj k ∈ G.hyperedges k) -- hj is valid single-color hyperedge
-    (_h_v2_in_hi : ∃ k, hi k = v2) -- v2 was selected for hi
-    (_h_v1_v2_in_g : v1 ∈ G.hyperedges g ∧ v2 ∈ G.hyperedges g ∧ v1 ≠ v2)
-    -- Assume v1 excluded from hi because of v2
-    (h_exclusion_hi : ∃ k, hi k = v2 ∧ v1 ∈ G.hyperedges k ∧ v1 ≠ v2)
-    -- Assume v1 also excluded from hj for SAME reason (same v2)
-    (h_exclusion_hj : ∃ k, hj k = v2 ∧ v1 ∈ G.hyperedges k ∧ v1 ≠ v2)
-    -- Uniqueness property: each vertex appears in at most one single-color hyperedge
-    -- This is implicit in the manuscript's Theorem 1 goal
-    (h_uniqueness : ∀ v : G.vertices, ∀ (_i _j : Fin n),
-      (∃ k, hi k = v) → (∃ k, hj k = v) → hi_num = hj_num) :
-  False := by
-  -- Extract witnesses from the exclusion hypotheses
-  obtain ⟨k_hi, hk_hi_eq, _, _⟩ := h_exclusion_hi
-  obtain ⟨k_hj, hk_hj_eq, _, _⟩ := h_exclusion_hj
-
-  -- v2 appears in both hi and hj
-  have hv2_in_hi : ∃ k, hi k = v2 := ⟨k_hi, hk_hi_eq⟩
-  have hv2_in_hj : ∃ k, hj k = v2 := ⟨k_hj, hk_hj_eq⟩
-
-  -- By uniqueness property, if v2 appears in both hi and hj,
-  -- then hi_num must equal hj_num
-  have : hi_num = hj_num := h_uniqueness v2 hi_num hj_num hv2_in_hi hv2_in_hj
-
-  -- But we know hi_num ≠ hj_num
-  -- This is a contradiction
-  exact absurd this h_different_hyperedges
-
-/-!
 ### Lemma: Count Connecting Hyperedges (Result 1)
 
 **Manuscript (Theorem 1, Result 1):**
