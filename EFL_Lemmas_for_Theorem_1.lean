@@ -141,6 +141,123 @@ lemma non_free_implies_additional_hyperedge {n : Nat} (G : EFLGraph n)
     exact hj_in
 
 /-!
+## Lemma 1.2 (Manuscript): Every Given Hyperedge Contains a Free Vertex
+
+If a given hyperedge g_i had no free vertex, then each of its n vertices would
+belong to at least one additional given hyperedge.  By the EFL pairwise-intersection
+property, two distinct vertices of g_i cannot use the same additional hyperedge.
+Thus the n vertices of g_i require n distinct additional given hyperedges, all
+different from g_i.  Together with g_i itself this would require n + 1 given
+hyperedges, although an EFL graph has only n.
+-/
+
+/-- Lemma 1.2: Every given hyperedge contains at least one free vertex. -/
+lemma every_hyperedge_has_free_vertex {n : Nat} (G : EFLGraph n) (i : Fin n) :
+    ∃ v : G.vertices, v ∈ G.hyperedges i ∧ is_free G v := by
+  classical
+  letI : DecidableEq G.vertices := G.dec_eq
+
+  by_contra h_no_free
+  push_neg at h_no_free
+
+  -- Every vertex of g_i is non-free, hence lies in some additional hyperedge.
+  have h_other :
+      ∀ v : G.vertices, v ∈ G.hyperedges i →
+        ∃ j : Fin n, j ≠ i ∧ v ∈ G.hyperedges j := by
+    intro v hv
+    have hnotfree : ¬ is_free G v := h_no_free v hv
+    have hnonfree : is_non_free G v :=
+      non_free_of_not_free_of_mem_hyperedge (G := G) hv hnotfree
+    exact non_free_implies_additional_hyperedge (G := G) v i hv hnonfree
+
+  let pickJ : {v // v ∈ G.hyperedges i} → Fin n := fun vv =>
+    Classical.choose (h_other vv.1 vv.2)
+
+  have hpick_spec :
+      ∀ vv : {v // v ∈ G.hyperedges i},
+        pickJ vv ≠ i ∧ vv.1 ∈ G.hyperedges (pickJ vv) := by
+    intro vv
+    exact Classical.choose_spec (h_other vv.1 vv.2)
+
+  -- Distinct vertices of g_i require distinct additional hyperedges.
+  have h_injective : Function.Injective pickJ := by
+    intro a b hab
+    by_contra hab_vertices
+    have habv : a.1 ≠ b.1 := by
+      intro h
+      exact hab_vertices (Subtype.ext h)
+
+    have hj_ne_i : pickJ a ≠ i := (hpick_spec a).1
+    have hj_eq : pickJ b = pickJ a := hab.symm
+
+    have ha_inter :
+        a.1 ∈ G.hyperedges i ∩ G.hyperedges (pickJ a) := by
+      simp [a.2, (hpick_spec a).2]
+    have hb_inter :
+        b.1 ∈ G.hyperedges i ∩ G.hyperedges (pickJ a) := by
+      have hb_other : b.1 ∈ G.hyperedges (pickJ b) := (hpick_spec b).2
+      rw [hj_eq] at hb_other
+      simp [b.2, hb_other]
+
+    have hpair_subset :
+        ({a.1, b.1} : Finset G.vertices) ⊆
+          (G.hyperedges i ∩ G.hyperedges (pickJ a)) := by
+      intro x hx
+      simp only [Finset.mem_insert, Finset.mem_singleton] at hx
+      rcases hx with rfl | rfl
+      · exact ha_inter
+      · exact hb_inter
+
+    have hcard_ge_two :
+        2 ≤ (G.hyperedges i ∩ G.hyperedges (pickJ a)).card := by
+      have hcard_pair : ({a.1, b.1} : Finset G.vertices).card = 2 := by
+        simp [habv]
+      have hle := Finset.card_le_card hpair_subset
+      simpa [hcard_pair] using hle
+
+    have hcard_le_one :
+        (G.hyperedges i ∩ G.hyperedges (pickJ a)).card ≤ 1 :=
+      G.pairwise_intersection i (pickJ a) (Ne.symm hj_ne_i)
+
+    omega
+
+  let additional : Finset (Fin n) := (G.hyperedges i).attach.image pickJ
+
+  have h_additional_card : additional.card = n := by
+    have himage :
+        additional.card = (G.hyperedges i).attach.card := by
+      simpa [additional] using
+        (Finset.card_image_of_injective
+          (s := (G.hyperedges i).attach) (f := pickJ) h_injective)
+    calc
+      additional.card = (G.hyperedges i).attach.card := himage
+      _ = (G.hyperedges i).card := by simp
+      _ = n := G.size_constraint i
+
+  have hi_not_mem : i ∉ additional := by
+    intro hi
+    rcases Finset.mem_image.mp hi with ⟨vv, _hvv, hpick⟩
+    have hne := (hpick_spec vv).1
+    exact hne hpick
+
+  -- additional already contains n distinct hyperedges, all different from i.
+  -- Adding i would therefore produce n + 1 distinct elements of Fin n.
+  have h_insert_card : (insert i additional).card = n + 1 := by
+    simp [Finset.card_insert_of_notMem, hi_not_mem, h_additional_card]
+
+  have h_subset_univ :
+      insert i additional ⊆ (Finset.univ : Finset (Fin n)) := by
+    intro j _hj
+    simp
+
+  have h_upper : (insert i additional).card ≤ n := by
+    have hle := Finset.card_le_card h_subset_univ
+    simpa using hle
+
+  rw [h_insert_card] at h_upper
+  exact Nat.not_succ_le_self n h_upper
+
+/-!
 ### Lemma: Count Connecting Hyperedges (Result 1)
 
 **Manuscript (Theorem 1, Result 1):**
